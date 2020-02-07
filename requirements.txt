@@ -1,3 +1,4 @@
+docopt
 pynput==1.4
 pywin32==224
 opencv_python==4.1.0.25
@@ -7,3 +8,4 @@ waiting==1.4.1
 matplotlib==3.0.3
 Pillow==7.0.0
 win32gui==221.6
+pypiwin32

@@ -1,3 +1,18 @@
+"""Temy: TemTem Assistant
+
+Usage:
+  temy.py -h | --help
+  temy.py -v | --version
+  temy.py --espeak=<str> [--debug] [--windowed]
+
+Options:
+  -h, --help        Show this screen.
+  -v, --version     Show version. phone.
+  --espeak=<str>    Location of Espeak CLI executable.
+  --debug           Start program in debug mode.
+  --windowed        Use this if using game in windowed mode.
+"""
+
 import functools
 import math
 import subprocess
@@ -5,20 +20,24 @@ import threading
 import time
 import win32gui
 from win32api import GetSystemMetrics
-
 import waiting
 from PIL import ImageGrab
 import numpy as np
-
 import cv2
+from docopt import docopt
 from pynput.keyboard import Key, Listener
 from pytesseract import pytesseract
-
 import matplotlib.pyplot as plt
 
-espeak_loc = r'C:\Program Files (x86)\eSpeak\command_line\espeak.exe'
-full_screen = True
-debug = False
+arguments = docopt(__doc__)
+if arguments["--version"]:
+    VERSION = "0.0.1"
+    print("Temy " + VERSION + " for TemTem")
+    quit()
+
+espeak_loc = arguments["--espeak"]
+windowed = arguments["--windowed"]
+debug = arguments["--debug"]
 
 
 class G:
@@ -47,7 +66,7 @@ def get_game_screenshot():
     client_rect = win32gui.GetClientRect(hwnd)
     window_offset = math.floor(((rect[2] - rect[0]) - client_rect[2]) / 2)
 
-    title_offset = 0 if full_screen else ((rect[3] - rect[1]) - client_rect[3]) - window_offset
+    title_offset = 0 if not windowed else ((rect[3] - rect[1]) - client_rect[3]) - window_offset
 
     bbox = (0, 0, GetSystemMetrics(0), GetSystemMetrics(1))
 
@@ -61,7 +80,12 @@ def get_game_screenshot():
 
 
 X0, Y0 = 1920, 1080
-Y, X, _ = get_game_screenshot().shape
+Y, X = 0, 0
+try:
+    Y, X, _ = get_game_screenshot().shape
+except:
+    print("Game not running or is not visible")
+    quit()
 # x, y0, dy, w, h, n = 595, 513, 60, 40, 22, 7
 x, y0, dy, w, h, n = int(1463 * X / X0), int(376 * Y / Y0), int(39 * Y / Y0), int(38 * X / X0), int(19 * Y / Y0), 7
 caught_data = [(int(1476 * X / X0), int(347 * Y / Y0), 100, 110),
@@ -112,6 +136,7 @@ def tell_sv():
 
 
 def on_release(key):
+    print("Press f11 to quit")
     if key == Key.f9:
         tell_sv()
     elif key == Key.f10:
@@ -137,14 +162,15 @@ if __name__ == "__main__":
     checker = threading.Thread(target=start_check_for_capture)
     checker.start()
 
-    with Listener(
-            on_release=on_release) as listener:
-        print("When you capture a Temtem I'll calculate its total SV\nPress f11 to quit")
-        while G.run:
-            waiting.wait(lambda: G.show_new_image_flag or not G.run)
-            if G.img is not None:
-                plt.imshow(G.img, cmap='gray')
-                plt.show()
-                show_new_image_flag = False
+    if debug:
+        with Listener(
+                on_release=on_release) as listener:
+            print("When you capture a Temtem I'll calculate its total SV")
+            while G.run:
+                waiting.wait(lambda: G.show_new_image_flag or not G.run)
+                if G.img is not None:
+                    plt.imshow(G.img, cmap='gray')
+                    plt.show()
+                    show_new_image_flag = False
 
     checker.join()
